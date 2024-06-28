@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "legnaRelatorios",
+    "name": "Legna Relatórios",
     "slug": "legnaRelatorios",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -18,10 +18,28 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.legnarelatorios.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "buildToolsVersion": "34.0.0"
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ce78c450-89e1-4207-9b66-efbbaaea36b3"
+      }
     }
   }
 }
