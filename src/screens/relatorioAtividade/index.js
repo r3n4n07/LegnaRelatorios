@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, TextInput, ScrollView, Text, TouchableOpacity, Alert, Dimensions } from 'react-native';
+import { View, TextInput, ScrollView, Text, TouchableOpacity, Alert, Dimensions } from 'react-native';
 import { printToFileAsync } from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { IconButton, Button, Icon } from 'react-native-paper'
@@ -8,6 +8,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { subDays, format } from 'date-fns';
 import MaskInput from 'react-native-mask-input';
 import SkeletonPlaceholder from 'react-native-skeleton-placeholder';
+
+// Styles
+import { styles } from './styles';
 
 // Captura a largura da tela do celular
 const { width } = Dimensions.get('window');
@@ -232,6 +235,15 @@ export default function RelatorioAtividade() {
     setKmInicial('');
   }
 
+  const adicionarNovaAtividade = () => {
+    setInputs([...inputs, { local: '', atividade: '' }]);
+    scrollToBottom();
+  }
+
+  const deletarAtividade = (index)=>{
+    setInputs(prevInputs => prevInputs.filter((_, i) => i !== index))
+  }
+
   useEffect(() => {
     recuperarDadosInternos();
   }, [])
@@ -241,95 +253,116 @@ export default function RelatorioAtividade() {
   }, [inputs, nome, kmInicial, veiculo, placa]);
 
   return (
-      <ScrollView style={styles.container} ref={flatListRef}>
-        <IconButton icon={'chevron-left'} size={32} iconColor={"#FFF"} style={styles.botaoRetornar} onPress={() => { navigate.goBack() }} />
-        <View>
-          <View style={styles.containerOpcoes}>
-            <TouchableOpacity style={styles.containerBotaoGerarRelatorio} onPress={() => { gerarPdf() }}>
-              <IconButton icon={'note-text-outline'} size={36} iconColor='#fff' style={styles.iconeBotaoGerarRelatorio} />
-              <Button labelStyle={styles.textoBotaoGerarRelatorio} style={styles.botaoGerarRelatorio} >
-                Gerar Relatório
-              </Button>
-            </TouchableOpacity>
-            <IconButton icon={'reload'} iconColor='#fff' size={32} style={styles.botaoReload} onPress={() => { reiniciarRelatorios() }} />
-          </View>
-          <ScrollView horizontal={true} pagingEnabled style={{ flexDirection: 'row' }} showsHorizontalScrollIndicator={false}>
-            <View style={{ width: width }}>
-              <View style={{}}>
-                <TextInput
-                  style={styles.textInputNome}
-                  placeholder='Nome'
-                  placeholderTextColor={'#B2BABB'}
-                  onChangeText={setNome}
-                  value={nome}
-                />
-              </View>
-              <View>
-                <TextInput
-                  style={[styles.textInputNome, { marginTop: 16 }]}
-                  placeholder='Km Inicial'
-                  placeholderTextColor={'#B2BABB'}
-                  onChangeText={setKmInicial}
-                  keyboardType='decimal-pad'
-                  value={kmInicial}
-                />
-              </View>
-            </View>
-            <View style={{ width: width }}>
-              <View>
-                <TextInput
-                  style={[styles.textInputNome]}
-                  placeholder='Veiculo'
-                  placeholderTextColor={'#B2BABB'}
-                  onChangeText={setVeiculo}
-                  value={veiculo}
-                />
-              </View>
-              <View>
-                <TextInput
-                  style={[styles.textInputNome, { marginTop: 16 }]}
-                  placeholder='Placa'
-                  placeholderTextColor={'#B2BABB'}
-                  onChangeText={setPlaca}
-                  value={placa}
-                />
-              </View>
-            </View>
-          </ScrollView>
+    <ScrollView style={styles.container} ref={flatListRef}>
+      <IconButton icon={'chevron-left'} size={32} iconColor={"#FFF"} style={styles.botaoRetornar} onPress={() => { navigate.goBack() }} />
+      <View>
+        <View style={styles.containerOpcoes}>
+          <TouchableOpacity style={styles.containerBotaoGerarRelatorio} onPress={() => { gerarPdf() }}>
+            <IconButton icon={'note-text-outline'} size={36} iconColor='#fff' style={styles.iconeBotaoGerarRelatorio} />
+            <Button labelStyle={styles.textoBotaoGerarRelatorio} style={styles.botaoGerarRelatorio} >
+              Gerar Relatório
+            </Button>
+          </TouchableOpacity>
+          <IconButton icon={'reload'} iconColor='#fff' size={32} style={styles.botaoReload} onPress={() => { reiniciarRelatorios() }} />
         </View>
-        {
-          inputs.map((item, index) => {
-            return (
-              <View key={index}>
-                <View style={styles.containerInputsRelatorio}>
-                  <View>
-                    <View style={styles.containerTituloInputLocal}>
-                      <Text style={styles.titulosInputsRelatorio}>Local:</Text>
-                      {index !== 0 &&
-                        < IconButton icon={'delete'} size={23} iconColor='#C0392B' style={{ margin: 0 }} onPress={() => { setInputs(prevInputs => prevInputs.filter((_, i) => i !== index)) }} />
-                      }
-                    </View>
-                    {!carregando ?
-                      <TextInput
-                        style={styles.inputs}
-                        onChangeText={(text) => alteraDadosInput(text, index, 'local')}
-                        value={item.local}
-                      />
-                      :
-                      <SkeletonPlaceholder borderRadius={4} highlightColor='#132135' backgroundColor='#fb7404' speed={900}>
-                        <SkeletonPlaceholder.Item width={'100%'} height={20} />
-                      </SkeletonPlaceholder>
+        <ScrollView horizontal={true} pagingEnabled style={{ flexDirection: 'row' }} showsHorizontalScrollIndicator={false}>
+          <View style={{ width: width }}>
+            <View>
+              <TextInput
+                style={styles.textInputNome}
+                placeholder='Nome'
+                placeholderTextColor={'#B2BABB'}
+                onChangeText={setNome}
+                value={nome}
+              />
+            </View>
+            <View>
+              <TextInput
+                style={[styles.textInputNome, { marginTop: 16 }]}
+                placeholder='Km Inicial'
+                placeholderTextColor={'#B2BABB'}
+                onChangeText={setKmInicial}
+                keyboardType='decimal-pad'
+                value={kmInicial}
+              />
+            </View>
+          </View>
+          <View style={{ width: width }}>
+            <View>
+              <TextInput
+                style={[styles.textInputNome]}
+                placeholder='Veiculo'
+                placeholderTextColor={'#B2BABB'}
+                onChangeText={setVeiculo}
+                value={veiculo}
+              />
+            </View>
+            <View>
+              <TextInput
+                style={[styles.textInputNome, { marginTop: 16 }]}
+                placeholder='Placa'
+                placeholderTextColor={'#B2BABB'}
+                onChangeText={setPlaca}
+                value={placa}
+              />
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+      {
+        inputs.map((item, index) => {
+          return (
+            <View key={index}>
+              <View style={styles.containerInputsRelatorio}>
+                <View>
+                  <View style={styles.containerTituloInputLocal}>
+                    <Text style={styles.titulosInputsRelatorio}>Local:</Text>
+                    {index !== 0 &&
+                      < IconButton icon={'delete'} size={23} iconColor='#C0392B' style={{ margin: 0 }} onPress={() => { deletarAtividade(index) }} />
                     }
                   </View>
+                  {!carregando ?
+                    <TextInput
+                      style={styles.inputs}
+                      onChangeText={(text) => alteraDadosInput(text, index, 'local')}
+                      value={item.local}
+                    />
+                    :
+                    <SkeletonPlaceholder borderRadius={4} highlightColor='#132135' backgroundColor='#fb7404' speed={900}>
+                      <SkeletonPlaceholder.Item width={'100%'} height={20} />
+                    </SkeletonPlaceholder>
+                  }
+                </View>
+                <View>
+                  <View style={styles.containerTituloInputKm}>
+                    <Text style={styles.titulosInputsRelatorio}>Km <Icon source={'car-speed-limiter'} color='#fb7404' size={22} />:</Text>
+                  </View>
+                  {!carregando ?
+                    <TextInput
+                      style={styles.inputs}
+                      onChangeText={(text) => alteraDadosInput(text, index, 'km')}
+                      value={item.km}
+                      keyboardType='decimal-pad'
+                    />
+                    :
+                    <SkeletonPlaceholder borderRadius={4} highlightColor='#132135' backgroundColor='#fb7404' speed={900}>
+                      <SkeletonPlaceholder.Item width={'100%'} height={20} />
+                    </SkeletonPlaceholder>
+                  }
+                </View>
+                <View style={styles.containerHoraChegadaSaida}>
                   <View>
-                    <View style={styles.containerTituloInputKm}>
-                      <Text style={styles.titulosInputsRelatorio}>Km <Icon source={'car-speed-limiter'} color='#fb7404' size={22} />:</Text>
+                    <View style={styles.containerTituloHorarioChegadaSaida}>
+                      <Text style={styles.titulosInputsRelatorio}>Chegada:</Text>
                     </View>
                     {!carregando ?
-                      <TextInput
-                        style={styles.inputs}
-                        onChangeText={(text) => alteraDadosInput(text, index, 'km')}
-                        value={item.km}
+                      <MaskInput
+                        style={[styles.inputs, { width: 80 }]}
+                        textAlign='center'
+                        onChangeText={(text) => alteraDadosInput(text, index, 'chegada')}
+                        mask={[/\d/, /\d/, ':', /\d/, /\d/]}
+                        placeholderTextColor={"#132135"}
+                        value={item.chegada}
                         keyboardType='decimal-pad'
                       />
                       :
@@ -338,202 +371,65 @@ export default function RelatorioAtividade() {
                       </SkeletonPlaceholder>
                     }
                   </View>
-                  <View style={styles.containerHoraChegadaSaida}>
-                    <View>
-                      <View style={styles.containerTituloHorarioChegadaSaida}>
-                        <Text style={styles.titulosInputsRelatorio}>Chegada:</Text>
-                      </View>
-                      {!carregando ?
-                        <MaskInput
-                          style={[styles.inputs, { width: 80 }]}
-                          textAlign='center'
-                          onChangeText={(text) => alteraDadosInput(text, index, 'chegada')}
-                          mask={[/\d/, /\d/, ':', /\d/, /\d/]}
-                          placeholderTextColor={"#132135"}
-                          value={item.chegada}
-                          keyboardType='decimal-pad'
-                        />
-                        :
-                        <SkeletonPlaceholder borderRadius={4} highlightColor='#132135' backgroundColor='#fb7404' speed={900}>
-                          <SkeletonPlaceholder.Item width={'100%'} height={20} />
-                        </SkeletonPlaceholder>
-                      }
-                    </View>
-                    <View>
-                      <IconButton icon={'alarm'} size={36} iconColor='#48C9B0' onPress={() => { pegarHoraChegadaESaida(index) }} style={styles.botaoRelogio} />
-                    </View>
-                    <View>
-                      <View style={styles.containerTituloHorarioChegadaSaida}>
-                        <Text style={styles.titulosInputsRelatorio}>Saída:</Text>
-                      </View>
-                      {!carregando ?
-                        <MaskInput
-                          style={[styles.inputs, { width: 80 }]}
-                          textAlign='center'
-                          onChangeText={(text) => alteraDadosInput(text, index, 'saida')}
-                          mask={[/\d/, /\d/, ':', /\d/, /\d/]}
-                          placeholderTextColor={"#132135"}
-                          value={item.saida}
-                          keyboardType='decimal-pad'
-                        />
-                        :
-                        <SkeletonPlaceholder borderRadius={4} highlightColor='#132135' backgroundColor='#fb7404' speed={900}>
-                          <SkeletonPlaceholder.Item width={'100%'} height={20} />
-                        </SkeletonPlaceholder>
-                      }
-                    </View>
+                  <View>
+                    <IconButton icon={'alarm'} size={36} iconColor='#48C9B0' onPress={() => { pegarHoraChegadaESaida(index) }} style={styles.botaoRelogio} />
                   </View>
-                  <View style={styles.containerInputAtividade}>
-                    <Text style={[styles.titulosInputsRelatorio, { marginBottom: 6 }]}>
-                      Atividade:
-                    </Text>
+                  <View>
+                    <View style={styles.containerTituloHorarioChegadaSaida}>
+                      <Text style={styles.titulosInputsRelatorio}>Saída:</Text>
+                    </View>
                     {!carregando ?
-                      <TextInput
-                        style={styles.inputAtividade}
-                        numberOfLines={3}
-                        multiline
-                        onChangeText={(text) => alteraDadosInput(text, index, 'atividade')}
-                        value={item.atividade}
+                      <MaskInput
+                        style={[styles.inputs, { width: 80 }]}
+                        textAlign='center'
+                        onChangeText={(text) => alteraDadosInput(text, index, 'saida')}
+                        mask={[/\d/, /\d/, ':', /\d/, /\d/]}
+                        placeholderTextColor={"#132135"}
+                        value={item.saida}
+                        keyboardType='decimal-pad'
                       />
                       :
                       <SkeletonPlaceholder borderRadius={4} highlightColor='#132135' backgroundColor='#fb7404' speed={900}>
-                        <SkeletonPlaceholder.Item width={'100%'} height={80} />
+                        <SkeletonPlaceholder.Item width={'100%'} height={20} />
                       </SkeletonPlaceholder>
                     }
-
                   </View>
                 </View>
-                <IconButton />
-                <View style={styles.linhaSeparaAtividade}>
+                <View style={styles.containerInputAtividade}>
+                  <Text style={[styles.titulosInputsRelatorio, { marginBottom: 6 }]}>
+                    Atividade:
+                  </Text>
+                  {!carregando ?
+                    <TextInput
+                      style={styles.inputAtividade}
+                      numberOfLines={3}
+                      multiline
+                      onChangeText={(text) => alteraDadosInput(text, index, 'atividade')}
+                      value={item.atividade}
+                    />
+                    :
+                    <SkeletonPlaceholder borderRadius={4} highlightColor='#132135' backgroundColor='#fb7404' speed={900}>
+                      <SkeletonPlaceholder.Item width={'100%'} height={80} />
+                    </SkeletonPlaceholder>
+                  }
+
                 </View>
               </View>
-            )
-          })
-        }
-        <IconButton
-          icon="plus"
-          size={32}
-          iconColor="#fff"
-          style={styles.botaoAdicionar}
-          onPress={() => {
-            setInputs([...inputs, { local: '', atividade: '' }]);
-            scrollToBottom();
-          }}
-        />
-      </ScrollView>
+              <IconButton />
+              <View style={styles.linhaSeparaAtividade}>
+              </View>
+            </View>
+          )
+        })
+      }
+      <IconButton
+        icon="plus"
+        size={32}
+        iconColor="#fff"
+        style={styles.botaoAdicionar}
+        onPress={() => { adicionarNovaAtividade() }}
+      />
+    </ScrollView>
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#132135'
-  },
-  botaoRetornar:{
-    margin: 0
-  },
-  containerOpcoes: {
-    margin: 12,
-    marginLeft: 6,
-    marginTop: 0,
-    flexDirection: 'row',
-    width: '100%',
-    justifyContent: 'space-between'
-  },
-  containerBotaoGerarRelatorio: {
-    justifyContent: 'center'
-  },
-  iconeBotaoGerarRelatorio: {
-    backgroundColor: "#C0392B",
-    position: 'absolute',
-    zIndex: 1,
-    margin: 0
-  },
-  textoBotaoGerarRelatorio: {
-    fontSize: 14,
-    color: "#fff",
-    fontWeight: 'bold',
-    letterSpacing: 1
-  },
-  botaoGerarRelatorio: {
-    height: 40,
-    backgroundColor: '#C0392B',
-    width: 175,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    borderRadius: 6,
-    marginLeft: 6
-  },
-  textInputNome: {
-    fontSize: 16,
-    borderBottomWidth: 2,
-    borderBottomColor: '#fff',
-    paddingLeft: 6,
-    color: '#fff'
-  },
-  botaoReload: {
-    alignSelf: 'flex-end'
-  },
-  containerInputsRelatorio: {
-    borderWidth: 0,
-    marginHorizontal: 16,
-    marginTop: 30,
-    marginBottom: 0
-  },
-  titulosInputsRelatorio: {
-    fontSize: 18,
-    color: '#fb7404',
-    fontWeight: '700'
-  },
-  containerTituloInputLocal: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center'
-  },
-  inputs: {
-    fontSize: 16,
-    borderBottomWidth: 2,
-    borderBottomColor: '#F0B27A',
-    color: '#fff'
-  },
-  containerTituloInputKm: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 16
-  },
-  containerHoraChegadaSaida: {
-    justifyContent: 'space-around',
-    flexDirection: 'row',
-    marginTop: 16
-  },
-  botaoRelogio:{
-    borderWidth: 3, 
-    borderColor: '#48C9B0', 
-    borderRadius: 12
-  },
-  containerTituloHorarioChegadaSaida: {
-    alignItems: 'center'
-  },
-  containerInputAtividade: {
-    marginTop: 16
-  },
-  inputAtividade: {
-    fontSize: 16,
-    borderWidth: 2,
-    borderColor: '#F0B27A',
-    textAlignVertical: 'top',
-    borderRadius: 6,
-    color: '#fff',
-    padding: 6
-  },
-  linhaSeparaAtividade: {
-    borderWidth: 2,
-    borderColor: '#B2BABB',
-    alignSelf: 'center',
-    width: 60
-  },
-  botaoAdicionar: {
-    alignSelf: 'center'
-  }
-})
