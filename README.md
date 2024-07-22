@@ -3,6 +3,7 @@
 <p float="left">
   <img src="https://drive.google.com/uc?export=download&id=1oDAzVF-rAYoia49m2a_oUHaeYxFfiCkW" width="200" />
   <img src="https://drive.google.com/uc?export=download&id=1rXXTCFNJqsZADKZrkeElw0x0aN2JzcNR" width="200" />
+  <img src="https://drive.google.com/uc?export=download&id=1E1TkctSn8qPi5NolRFdEmCCe41zz_ogD" width="200" />
 </p>
 
 ## Sobre
