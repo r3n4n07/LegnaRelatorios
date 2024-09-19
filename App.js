@@ -1,5 +1,4 @@
 import { View, StyleSheet, StatusBar} from "react-native";
-
 // Rotas
 import Routes from "./src/routes";
 

@@ -1,39 +1,46 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, TextInput, ScrollView, Text, TouchableOpacity, Alert, Dimensions } from 'react-native';
-import { printToFileAsync } from 'expo-print';
-import { shareAsync } from 'expo-sharing';
-import { IconButton, Button, Icon } from 'react-native-paper'
-import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { subDays, format } from 'date-fns';
-import MaskInput from 'react-native-mask-input';
-import SkeletonPlaceholder from 'react-native-skeleton-placeholder';
-
-// Styles
 import { styles } from './styles';
-
-// Captura a largura da tela do celular
-const { width } = Dimensions.get('window');
+import { useForm } from 'react-hook-form';
+import { shareAsync } from 'expo-sharing';
+import { printToFileAsync } from 'expo-print';
+import { useState, useEffect, useRef } from 'react';
+import { zodResolver } from "@hookform/resolvers/zod";
+import { IconButton, Button } from 'react-native-paper'
+import { useNavigation } from '@react-navigation/native';
+import InputsAtividades from './componentes/InputsAtividades';
+import { InputsMotorista } from './componentes/inputsMotorista';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { inputsMotoristaSchema } from '../../schemas/inputsMotoristaSchema';
+import { inputsAtividadesSchema } from '../../schemas/inputsAtividadesSchema';
 
 export default function RelatorioAtividade() {
 
-  const navigate = useNavigation();
-  const [nome, setNome] = useState('');
-  const [kmInicial, setKmInicial] = useState('');
-  const [veiculo, setVeiculo] = useState('');
-  const [placa, setPlaca] = useState('');
-  const flatListRef = useRef(null);
-  const [carregando, setCarregando] = useState(true);
+  const validacaoInputsMotorista = useForm({
+    resolver: zodResolver(inputsMotoristaSchema),
+    mode: "onSubmit"
+  });
+  const validacaoInputsAtividades = useForm({
+    resolver: zodResolver(inputsAtividadesSchema),
+    mode: "onSubmit"
+  });
   const [inputs, setInputs] = useState([
     {
-      local: '',
       km: '',
-      chegada: '',
+      local: '',
       saida: '',
+      chegada: '',
       atividade: ''
     }
   ]);
   const Data = new Date();
+  const navigate = useNavigation();
+  const flatListRef = useRef(null);
+  const [nome, setNome] = useState("");
+  const [placa, setPlaca] = useState("");
+  const [veiculo, setVeiculo] = useState("");
+  const [kmInicial, setKmInicial] = useState("");
+  const [carregando, setCarregando] = useState(true);
+  const isInitialMount = useRef(true);
   const options = { day: '2-digit', month: '2-digit', year: "numeric" }; //formatação da data
 
   // Move a tela para baixo a cada tarefa criada
@@ -41,39 +48,27 @@ export default function RelatorioAtividade() {
     flatListRef.current.scrollToEnd({ animated: true });
   };
 
-  // Captura o horário atual
-  const pegarHoraChegadaESaida = (index) => {
-    const data = subDays(new Date(), 0);
-    const horaFormatada = format(data, 'HH:mm');
-    const novosDados = [...inputs];
+  // Emite mensagem de erro caso algum campo input não siga as regras do schema
+  const onError = (errors) => {
+    const primeiraChave = Object.keys(errors)[0];
+    const mensagemInputsMotorista = errors[primeiraChave]?.message;
+    const segundaChave = Object.keys(errors[primeiraChave])[0];
+    const mensagemInputsAtividades = errors[primeiraChave][segundaChave]?.message;
 
-    if (!novosDados[index]['chegada']) {
-      novosDados[index]['chegada'] = horaFormatada;
-      setInputs(novosDados);
-    } else {
-      novosDados[index]['saida'] = horaFormatada;
-      setInputs(novosDados);
-    }
-  };
+    if (mensagemInputsMotorista) return Alert.alert("Atenção", mensagemInputsMotorista, [{ text: "Ok" }]);
+    return Alert.alert("Atenção", mensagemInputsAtividades, [{ text: "Ok" }]);
+  }
 
   // Gera o relatório pdf
   const gerarPdf = async () => {
     try {
-      if (!kmInicial || !inputs[inputs.length - 1].km || Number(inputs[inputs.length - 1].km) < Number(kmInicial)) {
-        Alert.alert('Atenção!', "Verifique se o km inicial ou o último relatório foram preenchidos corretamente.", [{ text: 'Ok' }]);
-        return
-      } else if (!veiculo || !placa) {
-        Alert.alert('Atenção!', "Verifique se veículo e placa foram preenchidos corretamente", [{ text: 'Ok' }]);
-        return
-      }
-
       let relatorios = '';
-      let kmPercorridos = 0;
+      const kmPercorridos = Number(inputs[inputs.length - 1].km) - Number(kmInicial);
 
-      // Concatenação de todos os relatórios
+      if (kmPercorridos <= 0) return Alert.alert("Atenção", "O KmInicial deve ser menor que o km da última atividade", [{ text: "Ok" }]);
+
       for (let relatorio of inputs) {
-        if (relatorio.local && relatorio.atividade && relatorio.km && relatorio.chegada && relatorio.saida) {
-          relatorios += `
+        relatorios += `
         <tr>
           <td>${relatorio.local}</td>
           <td>${relatorio.atividade}</td>
@@ -82,14 +77,7 @@ export default function RelatorioAtividade() {
           <td class="campos-numericos">${relatorio.saida}</td>
         </tr>
       `;
-        } else {
-          Alert.alert('Atenção', "Preencha todos os campos, para poder gerar o relatório.", [{ text: 'Ok' }])
-          return
-        }
       }
-
-      // Cálculo de km percorridos
-      kmPercorridos = Number(inputs[inputs.length - 1].km) - Number(kmInicial)
 
       // Estrutura html que será transformada em pdf
       const html = `
@@ -125,7 +113,7 @@ export default function RelatorioAtividade() {
             }
             .campos-numericos {
               text-align: center;
-              width: 10%
+              width: 12%
             }
           </style>
         </head>
@@ -144,7 +132,7 @@ export default function RelatorioAtividade() {
           <table>
             <tr>
               <th style='width:30%'>Local</th>
-              <th style='width:40%'>Atividade</th>
+              <th style='width:34%'>Atividade</th>
               <th class="campos-numericos">Km</th>
               <th class="campos-numericos">Chegada</th>
               <th class="campos-numericos">Saída</th>
@@ -162,67 +150,69 @@ export default function RelatorioAtividade() {
       const file = await printToFileAsync({
         html: html,
         base64: false,
-
       }); await shareAsync(file.uri);
-      file
     } catch (error) {
       Alert.alert('Erro!', error.message, [{ text: 'Ok' }])
     }
   }
 
-  const alteraDadosInput = (text, index, field) => {
-    const novosDados = [...inputs];
-    novosDados[index][field] = text;
-    setInputs(novosDados);
-  };
-
   // Salva as informações no armazenamento interno do celular
   const salvarRelatoriosInternamente = async () => {
     try {
-      await AsyncStorage.setItem("@LegnaRelatorios:salvaRelatorios", JSON.stringify(inputs));
-      await AsyncStorage.setItem("@LegnaRelatorios:salvaNome", JSON.stringify(nome));
-      await AsyncStorage.setItem("@LegnaRelatorios:salvaKmInicial", JSON.stringify(kmInicial));
-      await AsyncStorage.setItem("@LegnaRelatorios:salvaVeiculo", JSON.stringify(veiculo));
-      await AsyncStorage.setItem("@LegnaRelatorios:salvaPlaca", JSON.stringify(placa));
+      console.log("salvando")
+      await AsyncStorage.multiSet([
+        ["@LegnaRelatorios:salvaRelatorios", JSON.stringify(inputs)],
+        ["@LegnaRelatorios:salvaNome", JSON.stringify(nome)],
+        ["@LegnaRelatorios:salvaKmInicial", JSON.stringify(kmInicial)],
+        ["@LegnaRelatorios:salvaVeiculo", JSON.stringify(veiculo)],
+        ["@LegnaRelatorios:salvaPlaca", JSON.stringify(placa)]
+      ]);
     } catch (error) {
-      Alert.alert("Error!", "Falha ao salvar dados no AsyncStorage");
+      Alert.alert("Error!", `Falha ao salvar dados no AsyncStorage\n${error}`, [{ text: "Ok" }]);
     }
   };
 
   // Recupera os dados salvos no armazenamento interno do celular
-  recuperarDadosInternos = async () => {
-
+  const recuperarDadosInternos = async () => {
     try {
       setCarregando(true);
-      let relatoriosSalvo = await AsyncStorage.getItem("@LegnaRelatorios:salvaRelatorios");
-      relatoriosSalvo = relatoriosSalvo ? JSON.parse(relatoriosSalvo) : [{ local: '', chegada: '', saida: '', km: '', atividade: '', }];
+      const asyncStorageData = await AsyncStorage.multiGet(["@LegnaRelatorios:salvaRelatorios", "@LegnaRelatorios:salvaNome", "@LegnaRelatorios:salvaKmInicial", "@LegnaRelatorios:salvaVeiculo", "@LegnaRelatorios:salvaPlaca"]);
 
-      let nomeSalvo = await AsyncStorage.getItem("@LegnaRelatorios:salvaNome");
-      nomeSalvo = nomeSalvo ? JSON.parse(nomeSalvo) : '';
+      asyncStorageData.forEach(([AsyncStorageKey, AsyncStorageValue]) => {
 
-      let kmInicialSalvo = await AsyncStorage.getItem("@LegnaRelatorios:salvaKmInicial");
-      kmInicialSalvo = kmInicialSalvo ? JSON.parse(kmInicialSalvo) : '';
+        const value = JSON.parse(AsyncStorageValue);
 
-      let veiculoSalvo = await AsyncStorage.getItem("@LegnaRelatorios:salvaVeiculo");
-      veiculoSalvo = veiculoSalvo ? JSON.parse(veiculoSalvo) : '';
-
-      let placaSalvo = await AsyncStorage.getItem("@LegnaRelatorios:salvaPlaca");
-      placaSalvo = placaSalvo ? JSON.parse(placaSalvo) : '';
-
-      setInputs(relatoriosSalvo);
-      setNome(nomeSalvo);
-      setKmInicial(kmInicialSalvo);
-      setVeiculo(veiculoSalvo);
-      setPlaca(placaSalvo);
+        switch (AsyncStorageKey) {
+          case "@LegnaRelatorios:salvaRelatorios":
+            if (value) setInputs(value);
+            break;
+          case "@LegnaRelatorios:salvaNome":
+            if (value) setNome(value);
+            break;
+          case "@LegnaRelatorios:salvaKmInicial":
+            if (value) setKmInicial(value);
+            break;
+          case "@LegnaRelatorios:salvaVeiculo":
+            if (value) setVeiculo(value);
+            break;
+          case "@LegnaRelatorios:salvaPlaca":
+            if (value) setPlaca(value);
+            break;
+          default:
+            break;
+        }
+      });
     } catch (error) {
-      Alert.alert("Erro!", "Erro ao carregar os relatórios", [{ text: "Ok" }])
+      
+      Alert.alert("Erro!", `Erro ao carregar os relatórios\n ${error}`, [{ text: "Ok" }])
     } finally {
       setCarregando(false);
     }
-
   }
 
-  const reiniciarRelatorios = async () => {
+  // Reinicia os valores para o padrão
+  const reiniciarRelatorios = () => {
+    validacaoInputsAtividades.reset();
     setInputs([
       {
         local: '',
@@ -235,13 +225,10 @@ export default function RelatorioAtividade() {
     setKmInicial('');
   }
 
+  // Cria uma nova atividade
   const adicionarNovaAtividade = () => {
-    setInputs([...inputs, { local: '', atividade: '' }]);
+    setInputs([...inputs, { local: '', km: '', chegada: '', saida: '', atividade: '', }]);
     scrollToBottom();
-  }
-
-  const deletarAtividade = (index)=>{
-    setInputs(prevInputs => prevInputs.filter((_, i) => i !== index))
   }
 
   useEffect(() => {
@@ -249,176 +236,55 @@ export default function RelatorioAtividade() {
   }, [])
 
   useEffect(() => {
-    salvarRelatoriosInternamente();
-  }, [inputs, nome, kmInicial, veiculo, placa]);
+    if (!isInitialMount.current) {
+      salvarRelatoriosInternamente();
+    }
+
+    isInitialMount.current = false;
+  }, [inputs, nome, kmInicial, veiculo, placa])
 
   return (
-    <ScrollView style={styles.container} ref={flatListRef}>
+    <ScrollView style={styles.container} ref={flatListRef} keyboardShouldPersistTaps="handled">
       <IconButton icon={'chevron-left'} size={32} iconColor={"#FFF"} style={styles.botaoRetornar} onPress={() => { navigate.goBack() }} />
       <View>
         <View style={styles.containerOpcoes}>
-          <TouchableOpacity style={styles.containerBotaoGerarRelatorio} onPress={() => { gerarPdf() }}>
+          <TouchableOpacity style={styles.containerBotaoGerarRelatorio} onPress={validacaoInputsMotorista.handleSubmit(validacaoInputsAtividades.handleSubmit(gerarPdf, onError), onError)}>
             <IconButton icon={'note-text-outline'} size={36} iconColor='#fff' style={styles.iconeBotaoGerarRelatorio} />
             <Button labelStyle={styles.textoBotaoGerarRelatorio} style={styles.botaoGerarRelatorio} >
               Gerar Relatório
             </Button>
           </TouchableOpacity>
-          <IconButton icon={'reload'} iconColor='#fff' size={32} style={styles.botaoReload} onPress={() => { reiniciarRelatorios() }} />
+          <IconButton icon={'reload'} iconColor='#fff' size={32} style={styles.botaoReload} onPress={reiniciarRelatorios} />
         </View>
-        <ScrollView horizontal={true} pagingEnabled style={{ flexDirection: 'row' }} showsHorizontalScrollIndicator={false}>
-          <View style={{ width: width }}>
-            <View>
-              <TextInput
-                style={styles.textInputNome}
-                placeholder='Nome'
-                placeholderTextColor={'#B2BABB'}
-                onChangeText={setNome}
-                value={nome}
-              />
-            </View>
-            <View>
-              <TextInput
-                style={[styles.textInputNome, { marginTop: 16 }]}
-                placeholder='Km Inicial'
-                placeholderTextColor={'#B2BABB'}
-                onChangeText={setKmInicial}
-                keyboardType='decimal-pad'
-                value={kmInicial}
-              />
-            </View>
-          </View>
-          <View style={{ width: width }}>
-            <View>
-              <TextInput
-                style={[styles.textInputNome]}
-                placeholder='Veiculo'
-                placeholderTextColor={'#B2BABB'}
-                onChangeText={setVeiculo}
-                value={veiculo}
-              />
-            </View>
-            <View>
-              <TextInput
-                style={[styles.textInputNome, { marginTop: 16 }]}
-                placeholder='Placa'
-                placeholderTextColor={'#B2BABB'}
-                onChangeText={setPlaca}
-                value={placa}
-              />
-            </View>
-          </View>
-        </ScrollView>
+        <InputsMotorista
+          nome={nome}
+          placa={placa}
+          setNome={setNome}
+          veiculo={veiculo}
+          setPlaca={setPlaca}
+          kmInicial={kmInicial}
+          carregando={carregando}
+          setVeiculo={setVeiculo}
+          setKmInicial={setKmInicial}
+          control={validacaoInputsMotorista.control}
+          setValue={validacaoInputsMotorista.setValue}
+        />
       </View>
       {
         inputs.map((item, index) => {
           return (
-            <View key={index}>
-              <View style={styles.containerInputsRelatorio}>
-                <View>
-                  <View style={styles.containerTituloInputLocal}>
-                    <Text style={styles.titulosInputsRelatorio}>Local:</Text>
-                    {index !== 0 &&
-                      < IconButton icon={'delete'} size={23} iconColor='#C0392B' style={{ margin: 0 }} onPress={() => { deletarAtividade(index) }} />
-                    }
-                  </View>
-                  {!carregando ?
-                    <TextInput
-                      style={styles.inputs}
-                      onChangeText={(text) => alteraDadosInput(text, index, 'local')}
-                      value={item.local}
-                    />
-                    :
-                    <SkeletonPlaceholder borderRadius={4} highlightColor='#132135' backgroundColor='#fb7404' speed={900}>
-                      <SkeletonPlaceholder.Item width={'100%'} height={20} />
-                    </SkeletonPlaceholder>
-                  }
-                </View>
-                <View>
-                  <View style={styles.containerTituloInputKm}>
-                    <Text style={styles.titulosInputsRelatorio}>Km <Icon source={'car-speed-limiter'} color='#fb7404' size={22} />:</Text>
-                  </View>
-                  {!carregando ?
-                    <TextInput
-                      style={styles.inputs}
-                      onChangeText={(text) => alteraDadosInput(text, index, 'km')}
-                      value={item.km}
-                      keyboardType='decimal-pad'
-                    />
-                    :
-                    <SkeletonPlaceholder borderRadius={4} highlightColor='#132135' backgroundColor='#fb7404' speed={900}>
-                      <SkeletonPlaceholder.Item width={'100%'} height={20} />
-                    </SkeletonPlaceholder>
-                  }
-                </View>
-                <View style={styles.containerHoraChegadaSaida}>
-                  <View>
-                    <View style={styles.containerTituloHorarioChegadaSaida}>
-                      <Text style={styles.titulosInputsRelatorio}>Chegada:</Text>
-                    </View>
-                    {!carregando ?
-                      <MaskInput
-                        style={[styles.inputs, { width: 80 }]}
-                        textAlign='center'
-                        onChangeText={(text) => alteraDadosInput(text, index, 'chegada')}
-                        mask={[/\d/, /\d/, ':', /\d/, /\d/]}
-                        placeholderTextColor={"#132135"}
-                        value={item.chegada}
-                        keyboardType='decimal-pad'
-                      />
-                      :
-                      <SkeletonPlaceholder borderRadius={4} highlightColor='#132135' backgroundColor='#fb7404' speed={900}>
-                        <SkeletonPlaceholder.Item width={'100%'} height={20} />
-                      </SkeletonPlaceholder>
-                    }
-                  </View>
-                  <View>
-                    <IconButton icon={'alarm'} size={36} iconColor='#48C9B0' onPress={() => { pegarHoraChegadaESaida(index) }} style={styles.botaoRelogio} />
-                  </View>
-                  <View>
-                    <View style={styles.containerTituloHorarioChegadaSaida}>
-                      <Text style={styles.titulosInputsRelatorio}>Saída:</Text>
-                    </View>
-                    {!carregando ?
-                      <MaskInput
-                        style={[styles.inputs, { width: 80 }]}
-                        textAlign='center'
-                        onChangeText={(text) => alteraDadosInput(text, index, 'saida')}
-                        mask={[/\d/, /\d/, ':', /\d/, /\d/]}
-                        placeholderTextColor={"#132135"}
-                        value={item.saida}
-                        keyboardType='decimal-pad'
-                      />
-                      :
-                      <SkeletonPlaceholder borderRadius={4} highlightColor='#132135' backgroundColor='#fb7404' speed={900}>
-                        <SkeletonPlaceholder.Item width={'100%'} height={20} />
-                      </SkeletonPlaceholder>
-                    }
-                  </View>
-                </View>
-                <View style={styles.containerInputAtividade}>
-                  <Text style={[styles.titulosInputsRelatorio, { marginBottom: 6 }]}>
-                    Atividade:
-                  </Text>
-                  {!carregando ?
-                    <TextInput
-                      style={styles.inputAtividade}
-                      numberOfLines={3}
-                      multiline
-                      onChangeText={(text) => alteraDadosInput(text, index, 'atividade')}
-                      value={item.atividade}
-                    />
-                    :
-                    <SkeletonPlaceholder borderRadius={4} highlightColor='#132135' backgroundColor='#fb7404' speed={900}>
-                      <SkeletonPlaceholder.Item width={'100%'} height={80} />
-                    </SkeletonPlaceholder>
-                  }
-
-                </View>
-              </View>
-              <IconButton />
-              <View style={styles.linhaSeparaAtividade}>
-              </View>
-            </View>
+            <InputsAtividades
+              id={index}
+              key={index}
+              item={item}
+              inputs={inputs}
+              setInputs={setInputs}
+              carregando={carregando}
+              control={validacaoInputsAtividades.control}
+              register={validacaoInputsAtividades.register}
+              setValue={validacaoInputsAtividades.setValue}
+              unregister={validacaoInputsAtividades.unregister}
+            />
           )
         })
       }
@@ -427,7 +293,7 @@ export default function RelatorioAtividade() {
         size={32}
         iconColor="#fff"
         style={styles.botaoAdicionar}
-        onPress={() => { adicionarNovaAtividade() }}
+        onPress={adicionarNovaAtividade}
       />
     </ScrollView>
   )

@@ -1,5 +1,5 @@
-import { View, Text, Image, TouchableOpacity} from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { View, Text, Image, TouchableOpacity } from "react-native";
 
 // Styles
 import { styles } from "./styles";
@@ -8,9 +8,10 @@ import { styles } from "./styles";
 import Logo from '../../../assets/Logo.png';
 
 
-export default function Home() {
 
-    const navigate = useNavigation();
+export default function Home() {
+    const navigation = useNavigation();
+
     return (
         <View style={styles.container}>
             <View style={styles.containerSuperior}>
@@ -18,7 +19,7 @@ export default function Home() {
                     <Image source={Logo} style={styles.logo} />
                 </View>
             </View>
-            <TouchableOpacity style={styles.botao} onPress={()=>{navigate.navigate('Relatorio Atividade')}}>
+            <TouchableOpacity style={styles.botao} onPress={() => { navigation.navigate('Relatorio Atividade') }}>
                 <Text style={styles.textoBotao}>CRIAR RELATÓRIO</Text>
             </TouchableOpacity>
         </View>
